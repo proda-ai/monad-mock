@@ -1,0 +1,80 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.33.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: b627ae455efc938cb967877dc09b2807e7dc30ac73c1b3efcd0805eece256692
+
+name:           monad-mock
+version:        0.2.0.0
+synopsis:       A monad transformer for mocking mtl-style typeclasses
+description:    This package provides a monad transformer that helps create “mocks” of
+                @mtl@-style typeclasses, intended for use in unit tests. A mock can be
+                executed by providing a sequence of expected monadic calls and their results,
+                and the mock will verify that the computation conforms to the expectation.
+                .
+                For more information, see the module documentation for "Control.Monad.Mock".
+category:       Testing
+homepage:       https://github.com/cjdev/monad-mock#readme
+bug-reports:    https://github.com/cjdev/monad-mock/issues
+author:         Alexis King <lexi.lambda@gmail.com>
+maintainer:     Alexis King <lexi.lambda@gmail.com>
+copyright:      2017 CJ Affiliate by Conversant
+license:        ISC
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    CHANGELOG.md
+    LICENSE
+    package.yaml
+    README.md
+    stack.yaml
+
+source-repository head
+  type: git
+  location: https://github.com/cjdev/monad-mock
+
+library
+  exposed-modules:
+      Control.Monad.Mock
+      Control.Monad.Mock.TH
+      Control.Monad.Mock.TH.Internal.TypesQuasi
+  other-modules:
+      Paths_monad_mock
+  hs-source-dirs:
+      library
+  default-extensions: DefaultSignatures FlexibleContexts FlexibleInstances GADTs GeneralizedNewtypeDeriving LambdaCase MultiParamTypeClasses ScopedTypeVariables StandaloneDeriving TupleSections TypeFamilies TypeOperators
+  ghc-options: -Wall
+  build-depends:
+      base >=4.8.0.0 && <5
+    , constraints >=0.3.1
+    , exceptions >=0.6
+    , haskell-src-exts
+    , haskell-src-meta
+    , monad-control >=1.0.0.0 && <2
+    , mtl
+    , template-haskell >=2.10.0.0 && <2.16
+    , th-orphans
+    , transformers-base
+  if impl(ghc < 8)
+    build-depends:
+        transformers
+  default-language: Haskell2010
+
+test-suite monad-stub-test-suite
+  type: exitcode-stdio-1.0
+  main-is: Main.hs
+  other-modules:
+      Control.Monad.MockSpec
+      Paths_monad_mock
+  hs-source-dirs:
+      test-suite
+  default-extensions: DefaultSignatures FlexibleContexts FlexibleInstances GADTs GeneralizedNewtypeDeriving LambdaCase MultiParamTypeClasses ScopedTypeVariables StandaloneDeriving TupleSections TypeFamilies TypeOperators
+  ghc-options: -Wall -rtsopts -threaded -with-rtsopts=-N
+  build-depends:
+      base
+    , hspec
+    , monad-mock
+    , mtl
+  default-language: Haskell2010
