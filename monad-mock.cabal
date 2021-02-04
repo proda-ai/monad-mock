@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: b627ae455efc938cb967877dc09b2807e7dc30ac73c1b3efcd0805eece256692
+-- hash: 3d0b9f33f79fc9747489c69db1baf108d9dc8f7cac29eed63f4aaec5b703a7e0
 
 name:           monad-mock
 version:        0.2.0.0
@@ -54,7 +54,7 @@ library
     , haskell-src-meta
     , monad-control >=1.0.0.0 && <2
     , mtl
-    , template-haskell >=2.10.0.0 && <2.16
+    , template-haskell >=2.10.0.0 && <2.17
     , th-orphans
     , transformers-base
   if impl(ghc < 8)
