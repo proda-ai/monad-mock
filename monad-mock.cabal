@@ -3,8 +3,6 @@ cabal-version: 1.12
 -- This file has been generated from package.yaml by hpack version 0.34.7.
 --
 -- see: https://github.com/sol/hpack
---
--- hash: 285ef543cf515057db0b58385a4b60c94f2da857b81d30ecae529ac4cc5e028e
 
 name:           monad-mock
 version:        0.2.0.0
@@ -66,7 +64,7 @@ library
     , haskell-src-meta
     , monad-control >=1.0.0.0 && <2
     , mtl
-    , template-haskell >=2.10.0.0 && <2.18
+    , template-haskell >=2.10.0.0 && <2.19
     , th-orphans
     , transformers-base
   if impl(ghc < 8)

@@ -366,8 +366,8 @@ deriveAction' tyCon dataCons = do
       binderNames <- replicateM (conNumArgs con) ((,) <$> newName "x" <*> newName "y")
 
       let name = conName con
-          fstPat = ConP name (map (VarP . fst) binderNames)
-          sndPat = ConP name (map (VarP . snd) binderNames)
+          fstPat = ConP name [] (map (VarP . fst) binderNames)
+          sndPat = ConP name [] (map (VarP . snd) binderNames)
 
           mkPairwiseComparison x y = VarE '(==) `AppE` VarE x `AppE` VarE y
           pairwiseComparisons = map (uncurry mkPairwiseComparison) binderNames
