@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.33.0.
+-- This file has been generated from package.yaml by hpack version 0.34.7.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 3d0b9f33f79fc9747489c69db1baf108d9dc8f7cac29eed63f4aaec5b703a7e0
+-- hash: 285ef543cf515057db0b58385a4b60c94f2da857b81d30ecae529ac4cc5e028e
 
 name:           monad-mock
 version:        0.2.0.0
@@ -44,7 +44,19 @@ library
       Paths_monad_mock
   hs-source-dirs:
       library
-  default-extensions: DefaultSignatures FlexibleContexts FlexibleInstances GADTs GeneralizedNewtypeDeriving LambdaCase MultiParamTypeClasses ScopedTypeVariables StandaloneDeriving TupleSections TypeFamilies TypeOperators
+  default-extensions:
+      DefaultSignatures
+      FlexibleContexts
+      FlexibleInstances
+      GADTs
+      GeneralizedNewtypeDeriving
+      LambdaCase
+      MultiParamTypeClasses
+      ScopedTypeVariables
+      StandaloneDeriving
+      TupleSections
+      TypeFamilies
+      TypeOperators
   ghc-options: -Wall
   build-depends:
       base >=4.8.0.0 && <5
@@ -54,7 +66,7 @@ library
     , haskell-src-meta
     , monad-control >=1.0.0.0 && <2
     , mtl
-    , template-haskell >=2.10.0.0 && <2.17
+    , template-haskell >=2.10.0.0 && <2.18
     , th-orphans
     , transformers-base
   if impl(ghc < 8)
@@ -70,7 +82,19 @@ test-suite monad-stub-test-suite
       Paths_monad_mock
   hs-source-dirs:
       test-suite
-  default-extensions: DefaultSignatures FlexibleContexts FlexibleInstances GADTs GeneralizedNewtypeDeriving LambdaCase MultiParamTypeClasses ScopedTypeVariables StandaloneDeriving TupleSections TypeFamilies TypeOperators
+  default-extensions:
+      DefaultSignatures
+      FlexibleContexts
+      FlexibleInstances
+      GADTs
+      GeneralizedNewtypeDeriving
+      LambdaCase
+      MultiParamTypeClasses
+      ScopedTypeVariables
+      StandaloneDeriving
+      TupleSections
+      TypeFamilies
+      TypeOperators
   ghc-options: -Wall -rtsopts -threaded -with-rtsopts=-N
   build-depends:
       base

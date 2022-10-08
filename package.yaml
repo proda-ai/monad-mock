@@ -48,7 +48,7 @@ library:
   - th-orphans
   - monad-control >= 1.0.0.0 && < 2
   - mtl
-  - template-haskell >= 2.10.0.0 && < 2.17
+  - template-haskell >= 2.10.0.0 && < 2.18
   - transformers-base
   when:
   - condition: impl(ghc < 8)

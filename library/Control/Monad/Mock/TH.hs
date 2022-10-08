@@ -115,7 +115,7 @@ makeAction actionNameStr classTs = do
     methods <- traverse (classMethods . snd) classInfos
     actionCons <- concat <$> traverse (methodsToConstructors actionTypeCon actionTypeParam) classInfos
 
-    let actionDec = DataD' [] actionName [PlainTV actionParamName] actionCons
+    let actionDec = DataD' [] actionName [PlainTV actionParamName ()] actionCons
         mkStandaloneDec derivT = standaloneDeriveD' [] (derivT `AppT` (actionTypeCon `AppT` VarT actionParamName))
         standaloneDecs = [mkStandaloneDec (ConT ''Eq), mkStandaloneDec (ConT ''Show)]
     actionInstanceDec <- deriveAction' actionTypeCon actionCons
@@ -135,7 +135,7 @@ makeAction actionNameStr classTs = do
 
       let classArgs = typeArgs classType
       let mkClassKind vars = foldr (\a b -> AppT (AppT ArrowT a) b) (ConT ''Constraint) (reverse varKinds)
-            where varKinds = map (\(KindedTV _ k) -> k) vars
+            where varKinds = map (\(KindedTV _ _ k) -> k) vars
           constraintStr = show (ppr (ConT ''Constraint))
 
       when (length classArgs > length classVars) $
@@ -425,7 +425,7 @@ typeArgs _          = []
 -- example, applying 'splitFnType' to
 -- @forall a b c. (Foo a, Foo b, Bar c) => a -> b -> c@ produces
 -- @([a, b, c], (Foo a, Foo b, Bar c), [a, b], c)@.
-splitFnType :: Type -> ([TyVarBndr], Cxt, [Type], Type)
+splitFnType :: Type -> ([TyVarBndr Specificity], Cxt, [Type], Type)
 splitFnType (a `AppT` b `AppT` c) | a == ArrowT =
   let (tyVars, ctx, args, result) = splitFnType c
   in (tyVars, ctx, b:args, result)
@@ -458,9 +458,9 @@ typeVarNames (AppT a b) = nub (typeVarNames a ++ typeVarNames b)
 typeVarNames _ = []
 
 -- | Given any arbitrary 'TyVarBndr', gets its 'Name'.
-tyVarBndrName :: TyVarBndr -> Name
-tyVarBndrName (PlainTV name) = name
-tyVarBndrName (KindedTV name _) = name
+tyVarBndrName :: TyVarBndr f -> Name
+tyVarBndrName (PlainTV name _) = name
+tyVarBndrName (KindedTV name _ _) = name
 
 -- | Given some 'Info' about a class, get its methods as 'SigD' declarations.
 classMethods :: Info -> Q [Dec]
@@ -481,7 +481,7 @@ classTypeArgs other = fail $ "classTypeArgs: internal error; expected a class ty
 | without writing CPP everywhere and ending up with a small mess.              |
 |------------------------------------------------------------------------------}
 
-pattern DataD' :: Cxt -> Name -> [TyVarBndr] -> [Con] -> Dec
+pattern DataD' :: Cxt -> Name -> [TyVarBndr ()] -> [Con] -> Dec
 #if MIN_VERSION_template_haskell(2,11,0)
 pattern DataD' a b c d = DataD a b c Nothing d []
 #else
