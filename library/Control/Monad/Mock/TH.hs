@@ -111,11 +111,11 @@ makeAction actionNameStr classTs = do
         actionTypeCon = ConT actionName
         actionTypeParam = VarT actionParamName
 
-    classInfos <- traverse reify (map unappliedTypeName classTs)
-    methods <- traverse classMethods classInfos
-    actionCons <- concat <$> zipWithM (methodsToConstructors actionTypeCon actionTypeParam) classTs methods
+    classInfos <- traverse (\classT -> (classT,) <$> reify (unappliedTypeName classT)) classTs
+    methods <- traverse (classMethods . snd) classInfos
+    actionCons <- concat <$> traverse (methodsToConstructors actionTypeCon actionTypeParam) classInfos
 
-    let actionDec = DataD' [] actionName [PlainTV actionParamName] actionCons
+    let actionDec = DataD' [] actionName [PlainTV actionParamName ()] actionCons
         mkStandaloneDec derivT = standaloneDeriveD' [] (derivT `AppT` (actionTypeCon `AppT` VarT actionParamName))
         standaloneDecs = [mkStandaloneDec (ConT ''Eq), mkStandaloneDec (ConT ''Show)]
     actionInstanceDec <- deriveAction' actionTypeCon actionCons
@@ -135,7 +135,7 @@ makeAction actionNameStr classTs = do
 
       let classArgs = typeArgs classType
       let mkClassKind vars = foldr (\a b -> AppT (AppT ArrowT a) b) (ConT ''Constraint) (reverse varKinds)
-            where varKinds = map (\(KindedTV _ k) -> k) vars
+            where varKinds = map (\(KindedTV _ _ k) -> k) vars
           constraintStr = show (ppr (ConT ''Constraint))
 
       when (length classArgs > length classVars) $
@@ -183,14 +183,15 @@ makeAction actionNameStr classTs = do
     --      To accomplish this, 'methodToConstructors' accepts two 'Type's,
     --      where the first is the action type constructor, and the second is
     --      the constraint which must be removed.
-    methodsToConstructors :: Type -> Type -> Type -> [Dec] -> Q [Con]
-    methodsToConstructors actionConT actionParamT classT = traverse (methodToConstructor actionConT actionParamT classT)
+    methodsToConstructors :: Type -> Type -> (Type, Info) -> Q [Con]
+    methodsToConstructors actionConT actionParamT classTI =
+      traverse (methodToConstructor actionConT actionParamT classTI) =<< classMethods (snd classTI)
 
     -- | Converts a single class method into a constructor for an action type.
-    methodToConstructor :: Type -> Type -> Type -> Dec -> Q Con
-    methodToConstructor actionConT actionParamT classT (SigD name typ) = do
+    methodToConstructor :: Type -> Type -> (Type, Info) -> Dec -> Q Con
+    methodToConstructor actionConT actionParamT classTI (SigD name typ) = do
       let constructorName = methodNameToConstructorName name
-      newT <- replaceClassConstraint classT actionConT typ
+      newT <- replaceClassConstraint classTI actionConT typ
       let (tyVars, ctx, argTs, resultT) = splitFnType newT
           gadtCon = gadtC' constructorName [actionParamT] argTs resultT
       return $ ForallC tyVars ctx gadtCon
@@ -252,28 +253,57 @@ makeAction actionNameStr classTs = do
 -- the typeclass whose constraint must be removed and a type used to replace the
 -- constrained type variable, it replaces the uses of that type variable
 -- everywhere in the quantified type and removes the constraint.
-replaceClassConstraint :: Type -> Type -> Type -> Q Type
-replaceClassConstraint classType replacementType (ForallT vars preds typ) =
-  let -- split the provided class into the typeclass and its arguments:
+replaceClassConstraint :: (Type, Info) -> Type -> Type -> Q Type
+replaceClassConstraint (classT, classI) replacementType (ForallT vars preds typ) = do
+      -- split the provided class into the typeclass and its arguments:
       --
-      --             MonadFoo Int Bool
-      --             ^^^^^^^^ ^^^^^^^^
+      --                     classTypeArgs1
+      --                        |
+      --                     vvvvvvv
+      --             ExceptT Text IO m
+      --             ^^^^^^^ ^^^^^^^^^
       --                 |       |
-      --  unappliedClassType   classTypeArgs
-      unappliedClassType = unappliedType classType
-      classTypeArgs = typeArgs classType
+      --  unappliedClassType  classTypeArgs2
+  let unappliedClassType = unappliedType classT
+      classTypeArgs1 = typeArgs classT
+  classTypeArgs2 <- classTypeArgs classI
 
       -- find the constraint that belongs to the typeclass by searching for the
       -- constaint with the same base type
-      ([replacedPred], newPreds) = partition ((unappliedClassType ==) . unappliedType) preds
+  let (replacedPreds, newPreds) = partition ((unappliedClassType ==) . unappliedType) preds
+
+  -- In ghc before 8.8, the type of each method would include the constraints
+  -- from the class. So in
+  --
+  --     class Foo a where
+  --       foo1 :: a -> String
+  --       foo2 :: Show a => a -> String
+  --
+  -- we'd have
+  --
+  --     foo1 :: forall a . Foo a => a -> String
+  --     foo2 :: forall a . (Foo a, Show a) => a -> String
+  --
+  -- As of 8.8, we just have
+  --
+  --     foo1 :: a -> String
+  --     foo2 :: forall {} . Show a => a -> String -- note: not `forall a`
+  --
+  -- So if there's no predicate matching the typeclass name, we have to try to
+  -- construct it ourselves. This seems to work in simple cases, and has not yet
+  -- been tested in complicated ones.
+  replacedPred <- case replacedPreds of
+    [] -> return $ foldl' AppT unappliedClassType classTypeArgs2
+    [x] -> return x
+    _ -> fail "more than one replaced predicate"
 
       -- Get the type vars that we need to replace, and match them with their
       -- replacements. Since we have already validated that classType is the
       -- same as replacedPred but missing one argument (via
       -- assertDerivableConstraint), we can easily align the types we need to
       -- replace with their instantiations.
-      replacedVars = typeVarNames replacedPred
-      replacementTypes = classTypeArgs ++ [replacementType]
+  let replacedVars = typeVarNames replacedPred
+      replacementTypes = classTypeArgs1 ++ [replacementType]
 
       -- get the remaining vars in the forall quantification after stripping out
       -- the ones we’re replacing
@@ -281,8 +311,8 @@ replaceClassConstraint classType replacementType (ForallT vars preds typ) =
 
       -- actually perform the replacement substitution for each type var and its replacement
       replacedT = foldl' (flip $ uncurry substituteTypeVar) typ (zip replacedVars replacementTypes)
-  in return $ ForallT newVars newPreds replacedT
-replaceClassConstraint _ _ _ = fail "replaceClassConstraint: internal error; report a bug with the monad-mock package"
+  return $ ForallT newVars newPreds replacedT
+replaceClassConstraint classType replacementType typ = replaceClassConstraint classType replacementType (ForallT [] [] typ)
 
 -- | Given the name of a type of kind @* -> *@, generate an 'Action' instance.
 --
@@ -336,8 +366,8 @@ deriveAction' tyCon dataCons = do
       binderNames <- replicateM (conNumArgs con) ((,) <$> newName "x" <*> newName "y")
 
       let name = conName con
-          fstPat = ConP name (map (VarP . fst) binderNames)
-          sndPat = ConP name (map (VarP . snd) binderNames)
+          fstPat = ConP name [] (map (VarP . fst) binderNames)
+          sndPat = ConP name [] (map (VarP . snd) binderNames)
 
           mkPairwiseComparison x y = VarE '(==) `AppE` VarE x `AppE` VarE y
           pairwiseComparisons = map (uncurry mkPairwiseComparison) binderNames
@@ -395,7 +425,7 @@ typeArgs _          = []
 -- example, applying 'splitFnType' to
 -- @forall a b c. (Foo a, Foo b, Bar c) => a -> b -> c@ produces
 -- @([a, b, c], (Foo a, Foo b, Bar c), [a, b], c)@.
-splitFnType :: Type -> ([TyVarBndr], Cxt, [Type], Type)
+splitFnType :: Type -> ([TyVarBndr Specificity], Cxt, [Type], Type)
 splitFnType (a `AppT` b `AppT` c) | a == ArrowT =
   let (tyVars, ctx, args, result) = splitFnType c
   in (tyVars, ctx, b:args, result)
@@ -428,9 +458,9 @@ typeVarNames (AppT a b) = nub (typeVarNames a ++ typeVarNames b)
 typeVarNames _ = []
 
 -- | Given any arbitrary 'TyVarBndr', gets its 'Name'.
-tyVarBndrName :: TyVarBndr -> Name
-tyVarBndrName (PlainTV name) = name
-tyVarBndrName (KindedTV name _) = name
+tyVarBndrName :: TyVarBndr f -> Name
+tyVarBndrName (PlainTV name _) = name
+tyVarBndrName (KindedTV name _ _) = name
 
 -- | Given some 'Info' about a class, get its methods as 'SigD' declarations.
 classMethods :: Info -> Q [Dec]
@@ -440,13 +470,18 @@ classMethods (ClassI (ClassD _ _ _ _ methods) _) = return $ removeDefaultSigs me
           _             -> True
 classMethods other = fail $ "classMethods: internal error; expected a class type, given " ++ show other
 
+-- | Given some 'Info' about a class, get its type arguments.
+classTypeArgs :: Info -> Q [Type]
+classTypeArgs (ClassI (ClassD _ _ args _ _) _) = return $ VarT . tyVarBndrName <$> args
+classTypeArgs other = fail $ "classTypeArgs: internal error; expected a class type, given " ++ show other
+
 {------------------------------------------------------------------------------|
 | The following definitions abstract over differences in base and              |
 | template-haskell between GHC versions. This allows the same code to work     |
 | without writing CPP everywhere and ending up with a small mess.              |
 |------------------------------------------------------------------------------}
 
-pattern DataD' :: Cxt -> Name -> [TyVarBndr] -> [Con] -> Dec
+pattern DataD' :: Cxt -> Name -> [TyVarBndr ()] -> [Con] -> Dec
 #if MIN_VERSION_template_haskell(2,11,0)
 pattern DataD' a b c d = DataD a b c Nothing d []
 #else

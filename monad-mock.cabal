@@ -1,10 +1,8 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.33.0.
+-- This file has been generated from package.yaml by hpack version 0.34.7.
 --
 -- see: https://github.com/sol/hpack
---
--- hash: b627ae455efc938cb967877dc09b2807e7dc30ac73c1b3efcd0805eece256692
 
 name:           monad-mock
 version:        0.2.0.0
@@ -44,7 +42,19 @@ library
       Paths_monad_mock
   hs-source-dirs:
       library
-  default-extensions: DefaultSignatures FlexibleContexts FlexibleInstances GADTs GeneralizedNewtypeDeriving LambdaCase MultiParamTypeClasses ScopedTypeVariables StandaloneDeriving TupleSections TypeFamilies TypeOperators
+  default-extensions:
+      DefaultSignatures
+      FlexibleContexts
+      FlexibleInstances
+      GADTs
+      GeneralizedNewtypeDeriving
+      LambdaCase
+      MultiParamTypeClasses
+      ScopedTypeVariables
+      StandaloneDeriving
+      TupleSections
+      TypeFamilies
+      TypeOperators
   ghc-options: -Wall
   build-depends:
       base >=4.8.0.0 && <5
@@ -54,7 +64,8 @@ library
     , haskell-src-meta
     , monad-control >=1.0.0.0 && <2
     , mtl
-    , template-haskell >=2.10.0.0 && <2.16
+    -- 2.21 (GHC 9.8) has type errors
+    , template-haskell >=2.10.0.0 && <2.21
     , th-orphans
     , transformers-base
   if impl(ghc < 8)
@@ -70,11 +81,25 @@ test-suite monad-stub-test-suite
       Paths_monad_mock
   hs-source-dirs:
       test-suite
-  default-extensions: DefaultSignatures FlexibleContexts FlexibleInstances GADTs GeneralizedNewtypeDeriving LambdaCase MultiParamTypeClasses ScopedTypeVariables StandaloneDeriving TupleSections TypeFamilies TypeOperators
+  default-extensions:
+      DefaultSignatures
+      FlexibleContexts
+      FlexibleInstances
+      GADTs
+      GeneralizedNewtypeDeriving
+      LambdaCase
+      MultiParamTypeClasses
+      ScopedTypeVariables
+      StandaloneDeriving
+      TupleSections
+      TypeFamilies
+      TypeOperators
   ghc-options: -Wall -rtsopts -threaded -with-rtsopts=-N
   build-depends:
       base
     , hspec
     , monad-mock
     , mtl
+  build-tool-depends:
+      hspec-discover:hspec-discover
   default-language: Haskell2010
